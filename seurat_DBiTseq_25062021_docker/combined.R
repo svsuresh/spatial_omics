@@ -1,185 +1,47 @@
-library(ggplot2)
-library(plyr)
-library(gridExtra)
-library(magrittr)
-library(tidyr)
-library(raster)
-library(OpenImageR)
-library(ggpubr)
-library(grid)
-library(wesanderson)
-library(dplyr)
-library(Seurat)
-library(SeuratObject)
-library(patchwork)
-library(rhdf5)
-library(Matrix)
-library(sctransform)
-library(org.Hs.eg.db)
-library(clusterProfiler)
-library(Hmisc)
-library(ReactomePA)
-library(mygene)
-library(stringr)
-library(clusterProfiler)
+setRepositories(ind = 1:5)
 
-####################################################################################
-##############################Total transcripts and gene coutnts. R
-##script##########
-####################################################################################
-##read in the coordinates of points lying on top of the tissue.position.txt is
-##generated from matlab script "Pixel_identification.m".
+pkgs = c( "ggplot2", "plyr", "gridExtra", "magrittr", "tidyr", "raster", "OpenImageR", "ggpubr","grid",
+          "wesanderson", "dplyr", "Seurat", "SeuratObject", "patchwork", "rhdf5", "Matrix", "sctransform",
+          "org.Hs.eg.db",  "clusterProfiler",  "Hmisc", "ReactomePA", "mygene", "stringr","clusterProfiler"
+)
+
+#lapply(pkgs, library, character.only=T)
+
+lapply(pkgs, function(x) {
+  if (!require(x, character.only = T)) {
+    install.packages(x, dependencies = T)
+    library(x)
+  }
+})
+
+args = commandArgs(trailingOnly = TRUE)
+out_directory=paste(file.path(args[4]),Sys.Date(), sep="_")
+
+if (!dir.exists(out_directory)){
+  print  (paste(out_directory,"doesn't exist. Creating", out_directory, sep = " "))
+  dir.create(out_directory)
+  print(paste ("all results will be saved to ",file.path(getwd(),out_directory), sep = ""))
+}
+
+
+# Total transcripts and gene counts. R script read in  the coordinates of points lying on top of the tissue.position.txt is generated from matlab script "Pixel_identification.m".
+
 location <-
   read.table(
-    "external_input/position.txt",
+    args[1],
     sep = ",",
     header = FALSE,
     dec = ".",
     stringsAsFactors = F
   )
-x <- as.character(location[1,])
+x <- as.character(location[1, ])
 x = x[-1]
-##read expression matrix and generate the Filtered_matrix.tsv, which contains only the useful pixels
-my_data <-
-  read.table(
-    file = "results/npg_test_stdata.tsv",
-    sep = '\t',
-    header = TRUE,
-    stringsAsFactors = FALSE
-  )
-data_filtered <- my_data[my_data$X %in% x,]
-write.table(
-  data_filtered,
-  file = 'r_results/Filtered_matrix.tsv',
-  sep = '\t',
-  col.names = TRUE,
-  row.names = FALSE,
-  quote = FALSE
-)
 
-##calculate the total UMI count and Gene count
-count <- rowSums(data_filtered[, 2:ncol(data_filtered)])
-data_filtered_binary <-
-  data_filtered[, 2:ncol(data_filtered)] %>%
-  mutate_all(as.logical)
-gene_count <- rowSums(data_filtered_binary)
-
-##UMI Count
-region <-
-  2500  #change the x axis maximum, need to adjust based on different sample
-df <- data.frame(number = 1, c = count)
-pdf(
-  file = paste("r_results/UMI.pdf", sep = ""),
-  width = 8.6,
-  height = 8.6
-)
-ggplot(df, aes(x = c), color = 'blue', xlab = "Gene") +
-  geom_histogram(
-    aes(y = ..density..),
-    binwidth = region / 20,
-    color = "black",
-    fill = "white",
-    size = 1
-  ) +
-  geom_density(
-    alpha = .2,
-    fill = "#FF6666",
-    size = 1,
-    color = "red"
-  ) +
-  scale_x_continuous(name = "UMI", limits = c(0, region)) +
-  scale_y_continuous(name = "Density", expand = c(0, 0)) +
-  #xlim(0,4000) +
-  #expand_limits(x = 0, y = 0) +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),
-    axis.text = element_text(colour = "black", size = 20),
-    axis.title = element_text(
-      colour = "black",
-      size = 25,
-      face = "bold"
-    ),
-    legend.text = element_text(colour = "black", size = 20),
-    legend.title = element_text(
-      colour = "black",
-      size = 20,
-      face = "bold"
-    ),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank(),
-    axis.line.x = element_line(
-      colour = 'black',
-      size = 0.5,
-      linetype = 'solid'
-    ),
-    axis.line.y = element_line(
-      colour = 'black',
-      size = 0.5,
-      linetype = 'solid'
-    )
-  )
-dev.off()
-
-##Gene Count
-df <- data.frame(number = 1, c = gene_count)
-region = 1500 #change the x axis maximum, need to adjust based on different sample
-pdf(
-  file = paste("r_results/Gene.pdf", sep = ""),
-  width = 8.6,
-  height = 8.6
-)
-ggplot(df, aes(x = c), color = 'blue', xlab = "Gene") +
-  geom_histogram(
-    aes(y = ..density..),
-    binwidth = region / 20,
-    color = "black",
-    fill = "white",
-    size = 1
-  ) +
-  geom_density(
-    alpha = .2,
-    fill = "#FF6666",
-    size = 1,
-    color = "red"
-  ) +
-  scale_x_continuous(name = "Gene", limits = c(0, region)) +
-  scale_y_continuous(name = "Density", expand = c(0, 0)) +
-  #xlim(0,4000) +
-  #expand_limits(x = 0, y = 0) +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),
-    axis.text = element_text(colour = "black", size = 20),
-    axis.title = element_text(
-      colour = "black",
-      size = 25,
-      face = "bold"
-    ),
-    legend.text = element_text(colour = "black", size = 20),
-    legend.title = element_text(
-      colour = "black",
-      size = 20,
-      face = "bold"
-    ),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank(),
-    axis.line.x = element_line(
-      colour = 'black',
-      size = 0.5,
-      linetype = 'solid'
-    ),
-    axis.line.y = element_line(
-      colour = 'black',
-      size = 0.5,
-      linetype = 'solid'
-    )
-  )
-dev.off()
-
+### read image
 #imported_raster=OpenImageR::readImage("ventricle.jpg")     #if you want the
 #microscope image under the heatmap, then uncomment this line.
-imported_raster = OpenImageR::readImage("external_input/FFPE-2.jpg")
+imported_raster = OpenImageR::readImage(args[2])
+
 g <-
   rasterGrob(
     imported_raster,
@@ -188,116 +50,188 @@ g <-
     interpolate = FALSE
   )
 
-#UMI heatmap, adjust the limits for scale_color_gradientn, select the limit to
-#be close to the maximum number.
-test <- data_filtered %>%
-  separate(X, c("A", "B"),  sep = "x")
+##read expression matrix and generate the Filtered_matrix.tsv, which contains only the useful pixels
+my_data <-
+  read.table(
+    file = args[3],
+    sep = '\t',
+    header = TRUE,
+    stringsAsFactors = FALSE
+  )
+data_filtered <- my_data[my_data$X %in% x, ]
+
+write.table(
+  data_filtered,
+  file = file.path(out_directory, "Filtered_matrix.tsv"),
+  sep = '\t',
+  col.names = TRUE,
+  row.names = FALSE,
+  quote = FALSE
+)
+# View(data_filtered)
+
+##calculate the total UMI count and Gene count
+
+count = rowSums(data_filtered[, -1])
+
+theme_base= theme_bw() +
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 25,face = "bold"),
+      axis.text = element_text(colour = "black", size = 20),
+      axis.title = element_text(colour = "black",size = 25,face = "bold"),
+      axis.line.x = element_line(colour = 'black',size = 0.5,linetype = 'solid'),
+      axis.line.y = element_line(colour = 'black',size = 0.5,linetype = 'solid')
+    )
+
+ggplot_draw = function(input, region, type, color) {
+  ggplot(as.data.frame(input), aes(x = input)) +
+    geom_histogram(
+      aes(y = ..density..),
+      binwidth = region / 20,
+      colour = "white",
+      fill = color
+    ) +
+    geom_density(
+      alpha = .2,
+      fill = "red",
+      color = "red",
+      alpha = 0.8
+    ) +
+    labs(x = type, y = "Density", title = paste(type, "density", sep = "\t")) +
+    xlim(c(0, region)) +
+    theme_base
+      }
+
+##UMI Count
+
+region <-
+  2500  #change the x axis maximum, need to adjust based on different sample
+
+file.path(out_directory, "UMI.pdf")
 
 pdf(
-  file = paste("r_results/UMI_heatmap.pdf", sep = ""),
+  file = file.path(out_directory, "UMI.pdf"),
   width = 8.6,
   height = 8.6
 )
-ggplot(test, aes(x = as.numeric(A), y = as.numeric(B), color = count)) +
-  #scale_color_gradientn(colours = c("black", "green")) +
+fig1=ggplot_draw(count, region, "UMI", "steelblue")
+fig1
+dev.off()
+
+##Gene Count
+
+genecounts = sapply(data_filtered[, -1], as.logical) %>%
+  rowSums()
+
+#change the x axis maximum, need to adjust based on different sample
+region = 1500
+
+pdf(
+  file = file.path(out_directory, "Gene.pdf"),
+  width = 8.6,
+  height = 8.6
+)
+
+fig2=ggplot_draw(genecounts, region, "gene", "darkblue")
+fig2
+dev.off()
+
+# grid.arrange(fig1, fig2)
+
+#UMI heatmap, adjust the limits for scale_color_gradientn, select the limit to
+#be close to the maximum number.
+
+ggplot_heatmap = function(coords, data, title) {
+  ggplot(coords, aes(
+    x = as.numeric(A),
+    y = as.numeric(B),
+    color = !!data)
+  ) +
+    ggtitle(title) +
+    guides(colour = guide_colourbar(barwidth = 1, barheight = 30)) +
+    geom_point(shape = 15, size = 3) +
+    expand_limits(x = 0, y = 0)  +
+    scale_x_continuous(
+      name = "X",
+      limits = c(NA, NA),
+      expand = expansion(mult = c(-0.013, -0.013))
+    ) +
+    scale_y_reverse(
+      name = "Y",
+      limits = c(NA, NA),
+      expand = expansion(mult = c(-0.013, 0.008))
+    ) +
+    coord_equal(xlim = c(0, 51), ylim = c(51, 1)) +
+    theme_base+
+    theme(legend.title=element_blank())
+}
+
+test = data_filtered %>%
+  select(X) %>%
+  separate(X, c("A", "B"),  sep = "x")
+
+pdf(
+  file = file.path(out_directory, "UMI_heatmap.pdf"),
+  width = 8.6,
+  height = 8.6
+)
+
+fig3=ggplot_heatmap(test, count,"UMI")+
   scale_color_gradientn(
     colours = c("blue", "green", "red"),
     limits = c(0, 1000),
     oob = scales::squish
-  ) +
-  ggtitle("UMI") +
-  #annotation_custom(g, xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf) +  #if you
-  #want the microscope image under the heatmap, then uncomment this line.
-  guides(colour = guide_colourbar(barwidth = 1, barheight = 30)) +
-  geom_point(shape = 15, size = 3) +
-  expand_limits(x = 0, y = 0) +
-  scale_x_continuous(name = "X",
-                     limits = c(NA, NA),
-                     expand = expansion(mult = c(-0.013, -0.013))) +
-  scale_y_reverse(name = "Y",
-                  limits = c(NA, NA),
-                  expand = expansion(mult = c(-0.013, 0.008))) +
-  coord_equal(xlim = c(0, 51), ylim = c(51, 1)) +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),
-    axis.text = element_text(size = 20),
-    axis.title = element_text(size = 20, face = "bold"),
-    legend.text = element_text(size = 20),
-    legend.title = element_blank(),
-    #legend.title = element_text(colour="black", size=15, face="bold"),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank()
   )
+fig3
+
 dev.off()
 
 #Gene heatmap, adjust the limits for scale_color_gradientn, select the limit to
 #be close to the maximum number.
 pdf(
-  file = paste("r_results/Gene_heatmap.pdf", sep = ""),
+  file = paste("Gene_heatmap.pdf"),
   width = 8.6,
   height = 8.6
 )
-ggplot(test, aes(x = as.numeric(A), y = as.numeric(B), color = gene_count)) +
+
+fig4=ggplot_heatmap(test, genecounts,"Gene") +
   scale_color_gradientn(
     colours = c("blue", "green", "red"),
     limits = c(0, 1000),
     oob = scales::squish
-  ) +
-  ggtitle("Gene") +
-  #annotation_custom(g, xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf) +  #if you
-  #want the microscope image under the heatmap, then uncomment this line.
-  guides(colour = guide_colourbar(barwidth = 1, barheight = 30)) +
-  geom_point(shape = 15, size = 3) +
-  expand_limits(x = 0, y = 0) +
-  scale_x_continuous(name = "X",
-                     limits = c(NA, NA),
-                     expand = expansion(mult = c(-0.013, -0.013))) +
-  scale_y_reverse(name = "Y",
-                  limits = c(NA, NA),
-                  expand = expansion(mult = c(-0.013, 0.008))) +
-  coord_equal(xlim = c(0, 51), ylim = c(51, 1)) +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),
-    axis.text = element_text(size = 20),
-    axis.title = element_text(size = 20, face = "bold"),
-    legend.text = element_text(size = 20),
-    legend.title = element_blank(),
-    #legend.title = element_text(colour="black", size=15, face="bold"),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank()
   )
+
+fig4
 dev.off()
-############################################################################################
-######################DEG.R script ##############################
-#change filename1 to name of txt file you want to load
+
+# DEG.R script
+# change filename1 to name of txt file you want to load
 
 data1 <- data_filtered
 row.names(data1) = data1[, 1]
 data1 = data1[, -1]
+#View(data1)
 data2 <- t(data1)
 sample1.name <- "npgdata"
 matrix1.data <- Matrix(as.matrix(data2), sparse = TRUE)
+#View(matrix1.data)
 
 #Create Seurat object
-ffpe2 <-
-  CreateSeuratObject(matrix1.data, min.cells = 10, project = sample1.name)
-ffpe2 <-
-  PercentageFeatureSet(ffpe2, pattern = "^MT-", col.name = "percent.mt")
-ffpe2 <-
-  SCTransform(ffpe2, vars.to.regress = "percent.mt", verbose = FALSE)
-ffpe2 <- RunPCA(ffpe2, verbose = FALSE)
-ffpe2 <- RunUMAP(ffpe2, dims = 1:10, verbose = FALSE)
-ffpe2 <- FindNeighbors(ffpe2, dims = 1:10, verbose = FALSE)
-ffpe2 <- FindClusters(ffpe2, resolution = 0.8, verbose = FALSE)
+ffpe1 = CreateSeuratObject(matrix1.data, min.cells = 10, project = sample1.name)
+ffpe2 = PercentageFeatureSet(ffpe1, pattern = "^MT-", col.name = "percent.mt")
+ffpe2 = SCTransform(ffpe2, vars.to.regress = "percent.mt", verbose = FALSE)
+ffpe2 =  RunPCA(ffpe2, verbose = FALSE)
+ffpe2 =  RunUMAP(ffpe2, dims = 1:10, verbose = FALSE)
+ffpe2 =  FindNeighbors(ffpe2, dims = 1:10, verbose = FALSE)
+ffpe2 =  FindClusters(ffpe2, resolution = 0.8, verbose = FALSE)
 
 pdf(
-  file = paste("r_results/umap_plot2.pdf", sep = ""),
+  file = file.path(out_directory, "umap_plot2.pdf"),
   width = 8.6,
   height = 8.6
 )
-DimPlot(ffpe2, label = TRUE) + NoLegend()  # the UMAP plot
+fig5=DimPlot(ffpe2, label = TRUE) + NoLegend()  # the UMAP plot
+fig5
 dev.off()
 
 ffpe2.markers <-
@@ -310,34 +244,42 @@ ffpe2.markers <-
 ffpe2 <- ScaleData(object = ffpe2, features = rownames(ffpe2))
 ##View(ffpe2.markers)
 top10 <-
-  ffpe2.markers %>% 
-  group_by(cluster) %>% 
+  ffpe2.markers %>%
+  group_by(cluster) %>%
   top_n(n = 10, wt = avg_log2FC)
+
 pdf(
-  file = paste("r_results/top10_heatmap.pdf", sep = ""),
+  file = file.path(out_directory, "top10_heatmap.pdf"),
   width = 8.6,
   height = 8.6
 )
-DoHeatmap(ffpe2, features = top10$gene) +
+
+fig6=DoHeatmap(ffpe2, features = top10$gene) +
   scale_fill_gradientn(colors = c("red", "black", "green"))
+fig6
 dev.off()
-write.table(top10, "r_results/top10.txt", sep = "\t")
+
+write.table(top10, file.path(out_directory,"top10.txt"), sep = "\t")
+
 go <-
   ffpe2.markers %>%
   group_by(cluster) %>%
   top_n(n = 1000, wt = avg_log2FC)
-write.table(go, "r_results/go3.txt", sep = "\t")
+
+write.table(go, file.path(out_directory,"top_thousand_per_cluster.txt"), sep = "\t")
+
 x = ffpe2.markers$cluster
 aa = ffpe2.markers$p_val_adj >= 0.01
 ffpe2.markers$pp = as.numeric(aa)
 ffpe2.markers$pp <- as.factor(ffpe2.markers$pp)
 
 pdf(
-  file = paste("r_results/significant_genes.pdf", sep = ""),
+  file = file.path(out_directory, "significant_genes.pdf"),
   width = 8.6,
   height = 8.6
 )
-ggplot(ffpe2.markers, aes(x = cluster, y = avg_log2FC, color = pp)) +
+
+fig7=ggplot(ffpe2.markers, aes(x = cluster, y = avg_log2FC, color = pp)) +
   geom_violin(color = NA, fill = NA) +
   geom_jitter(shape = 16,
               size = 1,
@@ -354,24 +296,9 @@ ggplot(ffpe2.markers, aes(x = cluster, y = avg_log2FC, color = pp)) +
   )),
   position = position_jitter(width = 0.5, height = 0.3),
   colour = "black") +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 20, face = "bold"),
-    axis.text = element_text(colour = "black", size = 15),
-    axis.title = element_text(
-      colour = "black",
-      size = 15,
-      face = "bold"
-    ),
-    legend.text = element_text(colour = "black", size = 15),
-    legend.title = element_blank(),
-    #legend.title = element_text(colour="black", size=15, face="bold"),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.line.y = element_line(color = "black", size = 1),
-    axis.line.x = element_blank(),
-    axis.ticks.x = element_blank(),
-    panel.background = element_blank()
-  )
+  theme_base
+fig7
+
 dev.off()
 
 ## not working
@@ -385,27 +312,28 @@ top5 <-
   top_n(n = 5, wt = p_val)
 
 pdf(
-  file = paste("r_results/violin_plot_igf2_prrx1.pdf", sep = ""),
+  file = file.path(out_directory, "violin_plot_igf2_prrx1.pdf"),
   width = 8.6,
   height = 8.6
 )
 
-VlnPlot(ffpe2, features = c("Igf2", "Prrx1"))
+fig8=VlnPlot(ffpe2, features = c("Igf2", "Prrx1"))
 
 dev.off()
 
 pdf(
-  file = paste("r_results/dot_plot_top10_genes.pdf", sep = ""),
+  file = file.path(out_directory, "dot_plot_top10_genes.pdf"),
   width = 8.6,
   height = 8.6
 )
-DotPlot(
+fig9 = DotPlot(
   ffpe2,
   features = unique(top10$gene),
   cols = c("blue", "red"),
   dot.scale = 8,
 ) +
   RotatedAxis()
+fig9
 dev.off()
 #################################code end##################
 ##########################################################
@@ -413,9 +341,7 @@ dev.off()
 ######################################
 #Create Seurat object
 ffpe3 <-
-  CreateSeuratObject(matrix1.data, min.cells = 10, project = sample1.name)
-ffpe3 <-
-  NormalizeData(ffpe3,
+  NormalizeData(ffpe1,
                 normalization.method = "LogNormalize",
                 scale.factor = 10000)
 
@@ -424,61 +350,36 @@ genedata <- t(genedata)
 gene <- as.data.frame(as.matrix(genedata))
 gene$X = row.names(gene)
 ##View(gene$X)
-test <- gene %>%
+gene = gene %>%
   separate(X, c("A", "B"),  sep = "x")
-
+getwd()
+#save.image("st_pipeline_30052021.Rdata")
 #UMI heatmap
 pdf(
-  file = paste("r_results/Epcam.pdf", sep = ""),
+  file = file.path(out_directory, "Epcam.pdf"),
   width = 8.6,
   height = 8.6
 )
-ggplot(test, aes(x = as.numeric(A), y = as.numeric(B), color = Epcam)) +
-  #scale_color_gradientn(colours = c("black", "green")) +
-  scale_color_gradientn(colours = c("blue", "green", "red"),
-                        oob = scales::squish) +
-  ggtitle("Epcam") +
-  #annotation_custom(g, xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf) +
-  guides(colour = guide_colourbar(barwidth = 1, barheight = 30)) +
-  geom_point(shape = 15, size = 3) +
-  expand_limits(x = 0, y = 0) +
-  scale_x_continuous(name = "X",
-                     limits = c(NA, NA),
-                     expand = expansion(mult = c(-0.013,-0.013))) +
-  scale_y_reverse(name = "Y",
-                  limits = c(NA, NA),
-                  expand = expansion(mult = c(-0.013, 0.008))) +
-  coord_equal(xlim = c(0, 51), ylim = c(51, 1)) +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 40, face = "bold"),
-    axis.text = element_text(colour = "black", size = 30),
-    axis.title = element_text(
-      colour = "black",
-      size = 30,
-      face = "bold"
-    ),
-    legend.text = element_text(colour = "black", size = 30),
-    legend.title = element_blank(),
-    #legend.title = element_text(colour="black", size=15, face="bold"),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank(),
-    panel.border = element_rect(size = 1, fill = NA)
+
+fig10 = ggplot_heatmap(gene,sym("Epcam"),"Epcam")+
+  scale_color_gradientn(
+    colours = c("blue", "green", "red"),
+    oob = scales::squish
   )
+
 dev.off()
 
 ###################code ends here####################################
 ##########################################################
 ##############clustering code start#######################
 
-#Create Seurat object
 pdf(
-  file = paste("r_results/dimplot_seurat_object.pdf", sep = ""),
+  file = file.path(out_directory, "dimplot_seurat_object.pdf"),
   width = 8.6,
   height = 8.6
 )
 
-DimPlot(ffpe2, label = TRUE) +
+fig11=DimPlot(ffpe2, label = TRUE) +
   NoLegend()  # the UMAP plot
 
 dev.off()
@@ -494,14 +395,12 @@ test <- df1 %>%
 
 #Plot the spatial clusters
 pdf(
-  file = paste("r_results/spatial_clusters.pdf", sep = ""),
+  file = file.path(out_directory, "spatial_clusters.pdf"),
   width = 8.6,
   height = 8.6
 )
-ggplot(test, aes(x = as.numeric(A), y = as.numeric(B), color = count)) +
-  #scale_color_gradientn(colours = c("black", "green")) +
-  #scale_color_gradientn(colours = c("blue","green", "red"),
-  #                      oob = scales::squish) +
+
+fig12=ggplot(test, aes(x = as.numeric(A), y = as.numeric(B), color = count)) +
   ggtitle("UMAP") +
   annotation_custom(
     g,
@@ -519,17 +418,9 @@ ggplot(test, aes(x = as.numeric(A), y = as.numeric(B), color = count)) +
                   limits = c(NA, NA),
                   expand = expansion(mult = c(-0.013, 0.008))) +
   coord_equal(xlim = c(0, 51), ylim = c(51, 1)) +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),
-    axis.text = element_text(size = 20),
-    axis.title = element_text(size = 20, face = "bold"),
-    legend.text = element_text(size = 20),
-    legend.title = element_blank(),
-    #legend.title = element_text(colour="black", size=15, face="bold"),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank()
-  )
+  theme_base
+fig12
+
 dev.off()
 ####################################clustering code ends here################
 ####################################################################
@@ -551,40 +442,41 @@ for (i in 0:8) {
 }
 print ("list prepared")
 
-ck <-
-  clusterProfiler::compareCluster(geneCluster = mylist,
+ck = clusterProfiler::compareCluster(geneCluster = mylist,
                                   fun = "enrichGO",
                                   OrgDb = 'org.Hs.eg.db')
 
-print ("compare cluster done")
-save.image("compared_cluster.Rdata")
-print ("saved image")
-pdf(
-  file = paste("r_results/dotplot_cp.pdf", sep = ""),
-  width = 8.6,
-  height = 8.6
-)
+#print ("compare cluster done")
+#save.image("compared_cluster.Rdata")
+#print ("saved image")
 
-clusterProfiler::dotplot(ck)
-
-dev.off()
+# pdf(
+#   file = file.path(out_directory, "dotplot_cp.pdf"),
+#   width = 8.6,
+#   height = 8.6
+# )
+#
+# # clusterProfiler::dotplot(ck)
+#
+# dev.off()
 #View(ck)
-
 # ck@compareClusterResult$Description = NULL
 fcc <- gofilter(ck, level = 3)
 #View(cc)
 #cc@compareClusterResult$Description
 scc <- simplify(ck)
 
-pdf(
-  file = paste("r_results/enrichgo_cp.pdf", sep = ""),
-  width = 8.6,
-  height = 8.6
-)
-clusterProfiler::dotplot(fcc)
-clusterProfiler::dotplot(scc)
+ pdf(
+   file = file.path(out_directory, "enrichgo_cp.pdf"),
+   width = 8.6,
+   height = 8.6
+ )
 
-dev.off()
+ fig13= clusterProfiler::dotplot(fcc)
+ fig14=clusterProfiler::dotplot(scc)
+fig13
+fig14
+ dev.off()
 
 # ck@compareClusterResult$Description
 ### Do not know the purpose of this code below
@@ -595,12 +487,12 @@ dev.off()
 #############rungo script starts here####################
 ###############################################
 genetable <-  data.frame(cluster = go$cluster, gene = go$gene)
-temp = genetable[genetable$cluster == 0, ]
+temp = genetable[genetable$cluster == 0,]
 
 for (i in c(0:8)) {
-  temp = genetable[genetable$cluster == i,]
+  temp = genetable[genetable$cluster == i, ]
   xli = temp$gene
-result <-
+  result <-
     queryMany(
       xli,
       scopes = "symbol",
@@ -620,16 +512,44 @@ mylist <- lapply(mylist, function(x)
 
 res <- compareCluster(mylist, fun = "enrichPathway")
 
-pdf(
-  file = paste("r_results/enrich_pw_run_go.pdf", sep = ""),
-  width = 8.6,
-  height = 8.6
-)
+ pdf(
+   file = file.path(out_directory, "enrich_pw_run_go.pdf"),
+   width = 8.6,
+   height = 8.6
+ )
 
-dotplot(res)
+fig15=dotplot(res)
 
 dev.off()
 
 ######################code ends here###############################
-######################################################################
 ### Figures code################
+pdf(
+   file = file.path(out_directory, "all_figures.pdf"),
+   width = 8.6,
+   height = 8.6
+ )
+
+fig1
+fig2
+fig3
+fig4
+fig5
+fig6
+fig7
+fig8
+fig9
+fig10
+fig11
+fig12
+fig13
+fig14
+fig15
+
+dev.off()
+
+
+
+
+
+
