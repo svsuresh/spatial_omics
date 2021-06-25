@@ -1,0 +1,23 @@
+channels:
+        - bioconda
+        - defaults
+        - conda-forge
+
+dependencies:
+        - invoke
+        - argparse
+        - cython
+        - numpy
+        - pandas
+        - scipy
+        - scikit-learn
+        - sqlitedict
+        - regex
+        - HTSeq
+        - pysam
+        - setuptools
+        - pympler
+        - seaborn       
+        - star
+        - samtools
+        - openssl

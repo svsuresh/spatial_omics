@@ -1,0 +1,46 @@
+FROM ubuntu:hirsute
+
+RUN useradd npguser \
+	&& mkdir /home/npguser \
+	&& chown npguser:npguser /home/npguser \
+	&& addgroup npguser staff
+
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		software-properties-common \
+                dirmngr \
+                ed \
+		less \
+		locales \
+		vim \
+		wget \
+		ca-certificates
+
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+
+# Now install R and littler, and create a link for littler in /usr/local/bin
+# Default CRAN repo is now set by R itself, and littler knows about it too
+# r-cran-docopt is not currently in c2d4u so we install from source
+RUN apt-get update \
+        && apt-get install -y --no-install-recommends \
+ 		 libhdf5-dev \
+		 libcurl4-openssl-dev \
+		 r-base \
+ 		 r-base-dev \
+		 libssl-dev \
+ 		 r-recommended \
+		 libxml2-dev \
+		 libtiff-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY results /results/
+COPY external_input/ /external_input/
+COPY combined.R /
+RUN Rscript -e "install.packages('tidyverse')"\
+	    -e "install.packages('BiocManager')" \
+            -e "BiocManager::install(c('mygene','GenomicFeatures','rtracklayer','biomaRt','ggplot2', 'gridExtra', 'magrittr', 'raster', 'OpenImageR', 'ggpubr', 'grid', 'wesanderson', 'Seurat', 'patchwork', 'rhdf5', 'Matrix', 'sctransform', 'org.Hs.eg.db', 'clusterProfiler', 'Hmisc', 'clusterProfiler', 'ReactomePA', 'mygene'))"
+
+ENV R_HOME /usr/lib/R 
