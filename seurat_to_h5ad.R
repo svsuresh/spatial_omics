@@ -1,9 +1,9 @@
 ## Both lines below works to load anndata library.
-Sys.setenv(RETICULATE_PYTHON = "/home/suresh/.mc3/bin/python3.8")
-#import_from_path("anndata", path = "/home/suresh/.mc3/lib/python3.8/site-packages/")
+Sys.setenv(RETICULATE_PYTHON = "/.mc3/bin/python3.8")
+#import_from_path("anndata", path = "/.mc3/lib/python3.8/site-packages/")
 
 ## Load the data
-setwd("~/npg_work/DBiT-seq_FFPE/st_results_04052021/")
+setwd("~/home_work/DBiT-seq_FFPE/st_results_04052021/")
 df1=read.csv("text_outputs/Filtered_matrix.tsv", head=T, sep="\t", row.names=1)
 df2=t(df1)
 mdf2=Matrix::Matrix(as.matrix(df2), sparse=T)
